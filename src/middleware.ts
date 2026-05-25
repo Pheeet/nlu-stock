@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { COOKIE_NAME, getJwtSecret } from "@/lib/auth-config";
 
-const publicPaths = ["/login", "/api/auth/login"];
+const publicPaths = ["/login", "/api/auth/login", "/api/auth/logout", "/api/auth/session"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
