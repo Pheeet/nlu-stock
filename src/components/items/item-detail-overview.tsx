@@ -143,7 +143,11 @@ export function ItemDetailOverview({ item, userRole, onAdjust, onReportDamage }:
           <CardTitle className="text-sm font-medium text-muted-foreground">QR Code</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center gap-4">
-          <img src={qrDataUrl} alt={`QR for ${item.code}`} className="w-32 h-32" />
+          {qrDataUrl ? (
+            <img src={qrDataUrl} alt={`QR for ${item.code}`} className="w-32 h-32" />
+          ) : (
+            <div className="w-32 h-32 bg-muted animate-pulse rounded" />
+          )}
           <div className="text-sm text-muted-foreground">
             <p>Scan to find item: <span className="font-mono font-medium">{item.code}</span></p>
             <Button variant="outline" size="sm" className="mt-2" onClick={() => window.print()}>
