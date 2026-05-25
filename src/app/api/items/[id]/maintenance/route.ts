@@ -29,28 +29,31 @@ export async function POST(
   const data = parsed.data;
 
   try {
-    const record = await prisma.maintenanceRecord.create({
-      data: {
-        itemId,
-        type: data.type,
-        result: data.result,
-        performedAt: data.performedAt,
-        performedBy: session.userId,
-        issue: data.issue ?? undefined,
-        description: data.description ?? undefined,
-        cost: data.cost ?? undefined,
-        nextMaintenanceAt: data.nextMaintenanceAt ?? undefined,
-      },
-    });
+    const record = await prisma.$transaction(async (tx) => {
+      const rec = await tx.maintenanceRecord.create({
+        data: {
+          itemId,
+          type: data.type,
+          result: data.result,
+          performedAt: data.performedAt,
+          performedBy: session.userId,
+          issue: data.issue ?? undefined,
+          description: data.description ?? undefined,
+          cost: data.cost ?? undefined,
+          nextMaintenanceAt: data.nextMaintenanceAt ?? undefined,
+        },
+      });
 
-    // Update item's last/next maintenance dates
-    await prisma.item.update({
-      where: { id: itemId },
-      data: {
-        lastMaintenanceDate: data.performedAt,
-        ...(data.nextMaintenanceAt && { nextMaintenanceDate: data.nextMaintenanceAt }),
-        ...(data.result === "AVAILABLE" && { status: "AVAILABLE" }),
-      },
+      await tx.item.update({
+        where: { id: itemId },
+        data: {
+          lastMaintenanceDate: data.performedAt,
+          ...(data.nextMaintenanceAt && { nextMaintenanceDate: data.nextMaintenanceAt }),
+          ...(data.result === "AVAILABLE" && { status: "AVAILABLE" }),
+        },
+      });
+
+      return rec;
     });
 
     return NextResponse.json(record, { status: 201 });

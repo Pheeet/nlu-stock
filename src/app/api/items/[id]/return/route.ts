@@ -57,6 +57,9 @@ export async function POST(
         const item = await tx.item.findUnique({ where: { id: itemId } });
         if (!item) throw new Error("Item not found");
 
+        const maxReturn = item.totalQty - item.availableQty;
+        if (qty > maxReturn) throw new Error(`Cannot return ${qty}, only ${maxReturn} was dispensed`);
+
         await tx.item.update({
           where: { id: itemId },
           data: { availableQty: { increment: qty } },

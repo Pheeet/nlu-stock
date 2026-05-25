@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 import { Package, QrCode, AlertTriangle, ShoppingCart, ArrowDownToLine, Flag, Undo2 } from "lucide-react";
 import QRCode from "qrcode";
+import { toast } from "sonner";
 
 interface SubItemRecord {
   id: string;
@@ -70,7 +71,13 @@ export function ItemDetailOverview({ item, userRole, onAdjust, onReportDamage, o
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ subItemId }),
     });
-    if (res.ok) onRefresh();
+    if (res.ok) {
+      toast.success("Returned successfully");
+      onRefresh();
+    } else {
+      const err = await res.json();
+      toast.error(err.error ?? "Return failed");
+    }
   };
 
   const handleReturnQty = async () => {
@@ -81,7 +88,13 @@ export function ItemDetailOverview({ item, userRole, onAdjust, onReportDamage, o
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quantity: parseInt(qty) }),
     });
-    if (res.ok) onRefresh();
+    if (res.ok) {
+      toast.success("Returned successfully");
+      onRefresh();
+    } else {
+      const err = await res.json();
+      toast.error(err.error ?? "Return failed");
+    }
   };
 
   const statusSummary = item.trackIndividually
