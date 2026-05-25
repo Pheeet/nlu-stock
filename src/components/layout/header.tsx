@@ -1,28 +1,19 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Moon, Sun, Menu } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
   title: string;
-  onMenuToggle?: () => void;
 }
 
-export function Header({ title, onMenuToggle }: HeaderProps) {
+export function Header({ title }: HeaderProps) {
   const { setTheme, theme } = useTheme();
 
   return (
     <header className="flex items-center justify-between border-b px-4 h-14 bg-card">
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          onClick={onMenuToggle}
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
         <h1 className="text-lg font-semibold">{title}</h1>
       </div>
       <Button

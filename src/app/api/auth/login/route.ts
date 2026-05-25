@@ -5,7 +5,7 @@ import { COOKIE_NAME } from "@/lib/auth-config";
 import { z } from "zod/v4";
 
 const loginSchema = z.object({
-  email: z.email(),
+  email: z.string().min(1),
 });
 
 export async function POST(request: NextRequest) {
