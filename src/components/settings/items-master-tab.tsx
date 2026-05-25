@@ -1,0 +1,493 @@
+"use client";
+
+import React, { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
+import {
+  Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight,
+  ChevronDown, ChevronRight as ExpandIcon,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { SubCodesManager } from "./sub-codes-manager";
+
+interface CategoryType {
+  id: string;
+  name: string;
+  category: string;
+}
+
+interface Location {
+  id: string;
+  room: string;
+  cabinet: string | null;
+  shelf: string | null;
+}
+
+interface ItemRecord {
+  id: string;
+  code: string;
+  name: string;
+  nameTh: string | null;
+  categoryId: string;
+  category: CategoryType;
+  trackIndividually: boolean;
+  status: string;
+  issueUnit: string;
+  subUnit: string;
+  conversionFactor: number;
+  minThreshold: number;
+  locationId: string | null;
+  location: Location | null;
+  imageUrl: string | null;
+  description: string | null;
+  isActive: boolean;
+  totalQty: number;
+  availableQty: number;
+  _count: { subItems: number };
+  serialNumber: string | null;
+  model: string | null;
+  purchaseDate: string | null;
+  purchasePrice: number | null;
+  vendor: string | null;
+  warrantyEndDate: string | null;
+  maintenanceCycleMonths: number;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  CONSUMABLE: "สิ้นเปลือง",
+  DURABLE: "คงทน",
+  FIXED_ASSET: "ครุพันธุ์",
+  BOOK: "หนังสือ",
+};
+
+const defaultForm = {
+  code: "", name: "", nameTh: "", categoryId: "", trackIndividually: false,
+  issueUnit: "ชิ้น", subUnit: "", conversionFactor: 1, minThreshold: 0,
+  locationId: "", description: "", isActive: true,
+  serialNumber: "", model: "", purchaseDate: "", purchasePrice: "",
+  vendor: "", warrantyEndDate: "", maintenanceCycleMonths: 12,
+};
+
+export function ItemsMasterTab() {
+  const [items, setItems] = useState<ItemRecord[]>([]);
+  const [categories, setCategories] = useState<CategoryType[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [perPage] = useState(20);
+  const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<ItemRecord | null>(null);
+  const [form, setForm] = useState(defaultForm);
+  const [saving, setSaving] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
+  const fetchItems = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: String(page),
+      perPage: String(perPage),
+    });
+    if (search) params.set("search", search);
+    if (filterCategory) params.set("categoryId", filterCategory);
+    if (filterStatus) params.set("status", filterStatus);
+
+    const res = await fetch(`/api/settings/items?${params}`);
+    const data = await res.json();
+    setItems(data.items || []);
+    setTotal(data.total || 0);
+    setLoading(false);
+  }, [page, perPage, search, filterCategory, filterStatus]);
+
+  const fetchMeta = useCallback(async () => {
+    const [catRes, locRes] = await Promise.all([
+      fetch("/api/settings/categories"),
+      fetch("/api/settings/locations"),
+    ]);
+    setCategories(await catRes.json());
+    setLocations(await locRes.json());
+  }, []);
+
+  useEffect(() => { fetchItems(); }, [fetchItems]);
+  useEffect(() => { fetchMeta(); }, [fetchMeta]);
+
+  const totalPages = Math.ceil(total / perPage);
+
+  function openCreate() {
+    setEditing(null);
+    setForm(defaultForm);
+    setDialogOpen(true);
+  }
+
+  function openEdit(item: ItemRecord) {
+    setEditing(item);
+    setForm({
+      code: item.code,
+      name: item.name,
+      nameTh: item.nameTh || "",
+      categoryId: item.categoryId,
+      trackIndividually: item.trackIndividually,
+      issueUnit: item.issueUnit,
+      subUnit: item.subUnit,
+      conversionFactor: item.conversionFactor,
+      minThreshold: item.minThreshold,
+      locationId: item.locationId || "",
+      description: item.description || "",
+      isActive: item.isActive,
+      serialNumber: item.serialNumber || "",
+      model: item.model || "",
+      purchaseDate: item.purchaseDate ? item.purchaseDate.split("T")[0] : "",
+      purchasePrice: item.purchasePrice != null ? String(item.purchasePrice) : "",
+      vendor: item.vendor || "",
+      warrantyEndDate: item.warrantyEndDate ? item.warrantyEndDate.split("T")[0] : "",
+      maintenanceCycleMonths: item.maintenanceCycleMonths,
+    });
+    setDialogOpen(true);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    const payload = {
+      ...form,
+      nameTh: form.nameTh || null,
+      locationId: form.locationId || null,
+      description: form.description || null,
+      conversionFactor: Number(form.conversionFactor),
+      minThreshold: Number(form.minThreshold),
+      maintenanceCycleMonths: Number(form.maintenanceCycleMonths),
+      purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : null,
+      purchaseDate: form.purchaseDate || null,
+      warrantyEndDate: form.warrantyEndDate || null,
+      serialNumber: form.serialNumber || null,
+      model: form.model || null,
+      vendor: form.vendor || null,
+    };
+
+    try {
+      const url = editing ? `/api/settings/items/${editing.id}` : "/api/settings/items";
+      const method = editing ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || "Failed to save");
+        return;
+      }
+      toast.success(editing ? "Item updated" : "Item created");
+      setDialogOpen(false);
+      fetchItems();
+    } catch {
+      toast.error("Failed to save");
+    }
+    setSaving(false);
+  }
+
+  async function handleDelete(item: ItemRecord) {
+    if (!confirm(`Delete "${item.name}"? This cannot be undone if no transactions exist.`)) return;
+    const res = await fetch(`/api/settings/items/${item.id}`, { method: "DELETE" });
+    if (!res.ok) { const err = await res.json(); toast.error(err.error || "Failed to delete"); return; }
+    toast.success("Item deleted");
+    fetchItems();
+  }
+
+  const selectedCategory = categories.find((c) => c.id === form.categoryId);
+  const isFixedAsset = selectedCategory?.category === "FIXED_ASSET";
+
+  function locationLabel(loc: Location) {
+    return [loc.room, loc.cabinet, loc.shelf].filter(Boolean).join(" / ");
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Items Master</h3>
+        <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Add Item</Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search code, name..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="pl-8"
+          />
+        </div>
+        <Select value={filterCategory} onValueChange={(v) => { setFilterCategory(v === "__all__" ? "" : (v ?? "")); setPage(1); }}>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Categories" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All Categories</SelectItem>
+            {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v === "__all__" ? "" : (v ?? "")); setPage(1); }}>
+          <SelectTrigger className="w-[140px]"><SelectValue placeholder="All Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All Status</SelectItem>
+            <SelectItem value="AVAILABLE">Available</SelectItem>
+            <SelectItem value="CHECKED_OUT">Checked Out</SelectItem>
+            <SelectItem value="DAMAGED">Damaged</SelectItem>
+            <SelectItem value="UNDER_REPAIR">Under Repair</SelectItem>
+            <SelectItem value="LOST">Lost</SelectItem>
+            <SelectItem value="DISPOSED">Disposed</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Code</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead className="text-right">Available / Total</TableHead>
+              <TableHead>Unit</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 8 }).map((_, j) => (
+                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : items.length === 0 ? (
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No items found</TableCell></TableRow>
+            ) : items.map((item) => (
+              <React.Fragment key={item.id}>
+                <TableRow className={!item.isActive ? "opacity-50" : ""}>
+                  <TableCell className="font-mono text-sm">
+                    <div className="flex items-center gap-1">
+                      {item.trackIndividually && (
+                        <button onClick={() => setExpandedRow(expandedRow === item.id ? null : item.id)} className="p-0.5 hover:bg-muted rounded">
+                          {expandedRow === item.id ? <ChevronDown className="h-3.5 w-3.5" /> : <ExpandIcon className="h-3.5 w-3.5" />}
+                        </button>
+                      )}
+                      {item.code}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <span className="font-medium">{item.name}</span>
+                      {item.nameTh && <span className="text-muted-foreground ml-1">({item.nameTh})</span>}
+                    </div>
+                    {item.trackIndividually && <Badge variant="secondary" className="text-xs mt-0.5">Tracked ({item._count.subItems})</Badge>}
+                  </TableCell>
+                  <TableCell><Badge variant="outline">{CATEGORY_LABELS[item.category.category] || item.category.name}</Badge></TableCell>
+                  <TableCell className="text-right">
+                    <span className={item.availableQty < item.minThreshold ? "text-destructive font-medium" : ""}>{item.availableQty}</span>
+                    <span className="text-muted-foreground"> / {item.totalQty}</span>
+                  </TableCell>
+                  <TableCell className="text-sm">{item.issueUnit}</TableCell>
+                  <TableCell className="text-sm">{item.location ? locationLabel(item.location) : "-"}</TableCell>
+                  <TableCell><Badge variant={item.status === "AVAILABLE" ? "default" : "secondary"}>{item.status}</Badge></TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(item)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+                {expandedRow === item.id && item.trackIndividually && (
+                  <TableRow key={`${item.id}-expand`}>
+                    <TableCell colSpan={8} className="bg-muted/30 p-4">
+                      <SubCodesManager itemId={item.id} itemCode={item.code} />
+                    </TableCell>
+                  </TableRow>
+                )}
+              </React.Fragment>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {total} items, page {page} of {totalPages}
+          </p>
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit Item" : "Add Item"}</DialogTitle>
+          </DialogHeader>
+
+          <Tabs defaultValue="basic">
+            <TabsList className="w-full">
+              <TabsTrigger value="basic">Basic</TabsTrigger>
+              <TabsTrigger value="tracking">Tracking & Units</TabsTrigger>
+              <TabsTrigger value="stock">Stock & Location</TabsTrigger>
+              {isFixedAsset && <TabsTrigger value="asset">Fixed Asset</TabsTrigger>}
+            </TabsList>
+
+            <TabsContent value="basic" className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Code *</Label>
+                  <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Category *</Label>
+                  <Select value={form.categoryId} onValueChange={(v) => setForm({ ...form, categoryId: v ?? "" })}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Name *</Label>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </div>
+              <div>
+                <Label>Name (Thai)</Label>
+                <Input value={form.nameTh} onChange={(e) => setForm({ ...form, nameTh: e.target.value })} />
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="tracking" className="space-y-4 mt-4">
+              <div className="flex items-center gap-3">
+                <Switch checked={form.trackIndividually} onCheckedChange={(v) => setForm({ ...form, trackIndividually: v })} />
+                <Label>Track individually (sub-codes)</Label>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Issue Unit *</Label>
+                  <Input value={form.issueUnit} onChange={(e) => setForm({ ...form, issueUnit: e.target.value })} placeholder="e.g. ชิ้น, กล่อง" />
+                </div>
+                <div>
+                  <Label>Sub Unit</Label>
+                  <Input value={form.subUnit} onChange={(e) => setForm({ ...form, subUnit: e.target.value })} placeholder="e.g. อัน" />
+                </div>
+              </div>
+              <div>
+                <Label>Conversion Factor (1 issue = ? sub)</Label>
+                <Input type="number" value={form.conversionFactor} onChange={(e) => setForm({ ...form, conversionFactor: parseInt(e.target.value) || 1 })} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="stock" className="space-y-4 mt-4">
+              <div>
+                <Label>Min Threshold</Label>
+                <Input type="number" value={form.minThreshold} onChange={(e) => setForm({ ...form, minThreshold: parseInt(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <Label>Location</Label>
+                <Select value={form.locationId} onValueChange={(v) => setForm({ ...form, locationId: v === "__none__" ? "" : (v ?? "") })}>
+                  <SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No location</SelectItem>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>{locationLabel(loc)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
+                <Label>Active</Label>
+              </div>
+            </TabsContent>
+
+            {isFixedAsset && (
+              <TabsContent value="asset" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Serial Number</Label>
+                    <Input value={form.serialNumber} onChange={(e) => setForm({ ...form, serialNumber: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Model</Label>
+                    <Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Purchase Date</Label>
+                    <Input type="date" value={form.purchaseDate} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Purchase Price</Label>
+                    <Input type="number" step="0.01" value={form.purchasePrice} onChange={(e) => setForm({ ...form, purchasePrice: e.target.value })} />
+                  </div>
+                </div>
+                <div>
+                  <Label>Vendor</Label>
+                  <Input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Warranty End Date</Label>
+                    <Input type="date" value={form.warrantyEndDate} onChange={(e) => setForm({ ...form, warrantyEndDate: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Maintenance Cycle (months)</Label>
+                    <Input type="number" value={form.maintenanceCycleMonths} onChange={(e) => setForm({ ...form, maintenanceCycleMonths: parseInt(e.target.value) || 12 })} />
+                  </div>
+                </div>
+              </TabsContent>
+            )}
+          </Tabs>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving || !form.code || !form.name || !form.categoryId}>
+              {saving ? "Saving..." : editing ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

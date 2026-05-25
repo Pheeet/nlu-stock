@@ -1,0 +1,33 @@
+import { z } from "zod";
+import { Category } from "@/generated/prisma/enums";
+
+export const itemCreateSchema = z.object({
+  code: z.string().min(1, "Code is required").max(50),
+  name: z.string().min(1, "Name is required").max(200),
+  nameTh: z.string().max(200).optional().nullable(),
+  categoryId: z.string().min(1, "Category is required"),
+  trackIndividually: z.boolean().default(false),
+  issueUnit: z.string().min(1, "Issue unit is required").max(50),
+  subUnit: z.string().max(50).default(""),
+  conversionFactor: z.number().int().min(1).default(1),
+  minThreshold: z.number().int().min(0).default(0),
+  locationId: z.string().optional().nullable(),
+  imageUrl: z.string().url().optional().nullable(),
+  description: z.string().max(1000).optional().nullable(),
+  isActive: z.boolean().default(true),
+  // Fixed Asset fields
+  serialNumber: z.string().max(100).optional().nullable(),
+  model: z.string().max(200).optional().nullable(),
+  purchaseDate: z.coerce.date().optional().nullable(),
+  purchasePrice: z.number().min(0).optional().nullable(),
+  vendor: z.string().max(200).optional().nullable(),
+  warrantyEndDate: z.coerce.date().optional().nullable(),
+  maintenanceCycleMonths: z.number().int().min(1).default(12),
+  lastMaintenanceDate: z.coerce.date().optional().nullable(),
+  manualUrl: z.string().url().optional().nullable(),
+});
+
+export const itemUpdateSchema = itemCreateSchema.partial();
+
+export type ItemCreateInput = z.infer<typeof itemCreateSchema>;
+export type ItemUpdateInput = z.infer<typeof itemUpdateSchema>;
