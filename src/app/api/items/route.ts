@@ -38,6 +38,19 @@ export async function GET(request: NextRequest) {
     where.id = { in: lowStockItems.map((r) => r.id) };
   }
 
+  const nearExpiry = params.get("nearExpiry");
+  if (nearExpiry === "true") {
+    const in90Days = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    where.lots = {
+      some: { expiryDate: { gte: new Date(), lte: in90Days } },
+    };
+  }
+
+  const overdueMaint = params.get("overdueMaint");
+  if (overdueMaint === "true") {
+    where.nextMaintenanceDate = { lt: new Date() };
+  }
+
   const [items, total] = await Promise.all([
     prisma.item.findMany({
       where,

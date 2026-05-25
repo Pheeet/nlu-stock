@@ -186,27 +186,63 @@ async function main() {
   });
 
   // Lots for consumables
-  await prisma.lot.create({
+  const lotB01 = await prisma.lot.create({
     data: {
       itemId: itemBeaker.id, lotNumber: "LOT-B01", quantity: 50,
       expiryDate: new Date("2027-12-31"), receivedDate: new Date("2025-01-10"),
     },
   });
-  await prisma.lot.create({
+  const lotB02 = await prisma.lot.create({
     data: {
       itemId: itemBeaker.id, lotNumber: "LOT-B02", quantity: 50,
       expiryDate: new Date("2026-08-15"), receivedDate: new Date("2025-05-01"),
     },
   });
-  await prisma.lot.create({
+  const lotT01 = await prisma.lot.create({
     data: {
       itemId: itemTestTube.id, lotNumber: "LOT-T01", quantity: 200,
       expiryDate: new Date("2028-06-30"), receivedDate: new Date("2025-02-15"),
     },
   });
 
+  // --- Receive Records ---
+  const now = new Date();
+  const day = (d: number) => new Date(now.getTime() - d * 24 * 60 * 60 * 1000);
+
+  await prisma.receiveRecord.createMany({
+    data: [
+      { itemId: itemBeaker.id, lotId: lotB01.id, quantity: 50, receivedBy: admin.id, receivedAt: day(30), notes: "Initial stock" },
+      { itemId: itemBeaker.id, lotId: lotB02.id, quantity: 50, receivedBy: staff.id, receivedAt: day(20), notes: "Restock" },
+      { itemId: itemTestTube.id, lotId: lotT01.id, quantity: 200, receivedBy: staff.id, receivedAt: day(25) },
+      { itemId: itemFilterPaper.id, quantity: 500, receivedBy: admin.id, receivedAt: day(28) },
+      { itemId: itemMicroscope.id, quantity: 5, receivedBy: admin.id, receivedAt: day(60) },
+      { itemId: itemProjector.id, quantity: 3, receivedBy: admin.id, receivedAt: day(90) },
+    ],
+  });
+
+  // --- Dispense Records ---
+  const subjects = await prisma.subject.findMany();
+  const phy = subjects.find((s) => s.code === "PHY")!;
+  const chem = subjects.find((s) => s.code === "CHEM")!;
+  const bio = subjects.find((s) => s.code === "BIO")!;
+
+  await prisma.dispenseRecord.createMany({
+    data: [
+      { itemId: itemBeaker.id, lotId: lotB02.id, quantity: 10, quantitySub: 0, subjectId: phy.id, staffId: staff.id, dispensedAt: day(15), notes: "Physics lab" },
+      { itemId: itemBeaker.id, lotId: lotB01.id, quantity: 5, quantitySub: 0, subjectId: chem.id, staffId: staff.id, dispensedAt: day(10), notes: "Chemistry lab" },
+      { itemId: itemTestTube.id, lotId: lotT01.id, quantity: 20, quantitySub: 0, subjectId: chem.id, staffId: staff.id, dispensedAt: day(8) },
+      { itemId: itemTestTube.id, lotId: lotT01.id, quantity: 15, quantitySub: 0, subjectId: bio.id, staffId: staff.id, dispensedAt: day(5) },
+      { itemId: itemTestTube.id, lotId: lotT01.id, quantity: 10, quantitySub: 0, subjectId: phy.id, staffId: staff.id, dispensedAt: day(3) },
+      { itemId: itemFilterPaper.id, quantity: 30, quantitySub: 0, subjectId: chem.id, staffId: admin.id, dispensedAt: day(12) },
+      { itemId: itemFilterPaper.id, quantity: 25, quantitySub: 0, subjectId: bio.id, staffId: staff.id, dispensedAt: day(7) },
+      { itemId: itemBeaker.id, lotId: lotB02.id, quantity: 8, quantitySub: 0, subjectId: bio.id, staffId: staff.id, dispensedAt: day(2) },
+      { itemId: itemTestTube.id, lotId: lotT01.id, quantity: 12, quantitySub: 0, staffId: staff.id, dispensedAt: day(1) },
+      { itemId: itemBeaker.id, lotId: lotB01.id, quantity: 3, quantitySub: 0, subjectId: phy.id, staffId: admin.id, dispensedAt: day(0) },
+    ],
+  });
+
   console.log("Seed completed!");
-  console.log({ users: 3, categories: 4, subjects: 3, locations: 8, items: 9, subItems: 10, lots: 3 });
+  console.log({ users: 3, categories: 4, subjects: 3, locations: 8, items: 9, subItems: 10, lots: 3, receives: 6, dispenses: 10 });
 
   await prisma.$disconnect();
 }

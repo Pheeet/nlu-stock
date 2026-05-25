@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,8 +66,17 @@ function locationLabel(loc: Location) {
 }
 
 export default function ItemsPage() {
+  return (
+    <Suspense fallback={<div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-96 w-full" /></div>}>
+      <ItemsContent />
+    </Suspense>
+  );
+}
+
+function ItemsContent() {
   const { user } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<ItemRecord[]>([]);
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -77,8 +86,9 @@ export default function ItemsPage() {
   const [perPage] = useState(20);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterStatus, setFilterStatus] = useState(searchParams.get("status") ?? "");
   const [filterLocation, setFilterLocation] = useState("");
+  const [presetFilter, setPresetFilter] = useState<string | null>(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -87,18 +97,28 @@ export default function ItemsPage() {
     if (filterCategory) params.set("categoryId", filterCategory);
     if (filterStatus) params.set("status", filterStatus);
     if (filterLocation) params.set("locationId", filterLocation);
+    if (presetFilter) params.set(presetFilter, "true");
 
     const res = await fetch(`/api/items?${params}`);
     const data = await res.json();
     setItems(data.items || []);
     setTotal(data.total || 0);
     setLoading(false);
-  }, [page, perPage, search, filterCategory, filterStatus, filterLocation]);
+  }, [page, perPage, search, filterCategory, filterStatus, filterLocation, presetFilter]);
 
   useEffect(() => {
     fetch("/api/settings/categories").then((r) => r.json()).then(setCategories);
     fetch("/api/settings/locations").then((r) => r.json()).then(setLocations);
   }, []);
+
+  useEffect(() => {
+    const low = searchParams.get("lowStock");
+    const near = searchParams.get("nearExpiry");
+    const over = searchParams.get("overdueMaint");
+    if (low === "true") setPresetFilter("lowStock");
+    else if (near === "true") setPresetFilter("nearExpiry");
+    else if (over === "true") setPresetFilter("overdueMaint");
+  }, [searchParams]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -107,6 +127,16 @@ export default function ItemsPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
+        {presetFilter && (
+          <Badge
+            variant="secondary"
+            className="cursor-pointer"
+            onClick={() => setPresetFilter(null)}
+          >
+            {presetFilter === "lowStock" ? "Low Stock" : presetFilter === "nearExpiry" ? "Near Expiry" : "Overdue Maint."}
+            <span className="ml-1">&times;</span>
+          </Badge>
+        )}
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
