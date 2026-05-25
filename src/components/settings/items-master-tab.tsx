@@ -20,7 +20,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
@@ -110,7 +110,11 @@ export function ItemsMasterTab() {
     });
     if (search) params.set("search", search);
     if (filterCategory) params.set("categoryId", filterCategory);
-    if (filterStatus) params.set("status", filterStatus);
+    if (filterStatus === "INACTIVE") {
+      params.set("active", "false");
+    } else if (filterStatus) {
+      params.set("status", filterStatus);
+    }
 
     const res = await fetch(`/api/settings/items?${params}`);
     const data = await res.json();
@@ -246,7 +250,7 @@ export function ItemsMasterTab() {
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v === "__all__" ? "" : (v ?? "")); setPage(1); }}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="All Status" /></SelectTrigger>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">All Status</SelectItem>
             <SelectItem value="AVAILABLE">Available</SelectItem>
@@ -255,10 +259,11 @@ export function ItemsMasterTab() {
             <SelectItem value="UNDER_REPAIR">Under Repair</SelectItem>
             <SelectItem value="LOST">Lost</SelectItem>
             <SelectItem value="DISPOSED">Disposed</SelectItem>
+            <SelectSeparator />
+            <SelectItem value="INACTIVE">Inactive (hidden)</SelectItem>
           </SelectContent>
         </Select>
       </div>
-
       {/* Table */}
       <div className="rounded-md border">
         <Table>

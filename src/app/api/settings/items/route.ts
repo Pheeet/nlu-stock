@@ -34,7 +34,9 @@ export async function GET(request: NextRequest) {
   const trackIndividually = params.get("trackIndividually");
   if (trackIndividually !== null) where.trackIndividually = trackIndividually === "true";
 
-  if (params.get("active") !== "false") where.isActive = true;
+  const activeParam = params.get("active");
+  if (activeParam === "false") where.isActive = false;
+  else if (activeParam !== "all") where.isActive = true;
 
   const [items, total] = await Promise.all([
     prisma.item.findMany({
