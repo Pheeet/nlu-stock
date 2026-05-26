@@ -185,6 +185,89 @@ async function main() {
     },
   });
 
+  // Items with different statuses for dashboard chart testing
+  const itemCheckedOut = await prisma.item.create({
+    data: {
+      code: "DUR-003", name: "Digital Multimeter", nameTh: "มัลติมิเตอร์ดิจิทัล",
+      categoryId: catDurable.id, trackIndividually: true,
+      issueUnit: "เครื่อง", subUnit: "เครื่อง",
+      conversionFactor: 1, minThreshold: 1, locationId: locations[0].id,
+      totalQty: 4, availableQty: 0, status: "CHECKED_OUT",
+    },
+  });
+  for (let i = 1; i <= 4; i++) {
+    await prisma.subItem.create({
+      data: {
+        itemId: itemCheckedOut.id,
+        subCode: `DUR-003-${String(i).padStart(3, "0")}`,
+        status: "CHECKED_OUT", condition: "ดี",
+      },
+    });
+  }
+
+  await prisma.item.create({
+    data: {
+      code: "CON-005", name: "Broken Thermometer", nameTh: "เทอร์โมมิเตอร์เสีย",
+      categoryId: catConsumable.id, issueUnit: "อัน", subUnit: "อัน",
+      conversionFactor: 1, minThreshold: 0, locationId: locations[1].id,
+      totalQty: 3, availableQty: 0, status: "DAMAGED",
+    },
+  });
+
+  const itemUnderRepair = await prisma.item.create({
+    data: {
+      code: "FIX-003", name: "Spectrum Analyzer", nameTh: "เครื่องวิเคราะห์สเปกตรัม",
+      categoryId: catFixedAsset.id, trackIndividually: true,
+      issueUnit: "เครื่อง", subUnit: "เครื่อง",
+      conversionFactor: 1, minThreshold: 1, locationId: locations[2].id,
+      totalQty: 2, availableQty: 0, status: "UNDER_REPAIR",
+      serialNumber: "SN-SA-001", model: "Keysight N9320B",
+      purchaseDate: new Date("2022-03-01"), purchasePrice: 120000,
+    },
+  });
+  for (let i = 1; i <= 2; i++) {
+    await prisma.subItem.create({
+      data: {
+        itemId: itemUnderRepair.id,
+        subCode: `FIX-003-${String(i).padStart(3, "0")}`,
+        status: "UNDER_REPAIR", condition: "ซ่อม",
+      },
+    });
+  }
+
+  await prisma.item.create({
+    data: {
+      code: "DUR-004", name: "Missing Ruler Set", nameTh: "ไม้บรรทัดหาย",
+      categoryId: catDurable.id, issueUnit: "ชุด", subUnit: "ชุด",
+      conversionFactor: 1, minThreshold: 0, locationId: locations[3].id,
+      totalQty: 2, availableQty: 0, status: "LOST",
+    },
+  });
+
+  await prisma.item.create({
+    data: {
+      code: "FIX-004", name: "Oscilloscope", nameTh: "ออสซิลโลสโคป",
+      categoryId: catFixedAsset.id, trackIndividually: true,
+      issueUnit: "เครื่อง", subUnit: "เครื่อง",
+      conversionFactor: 1, minThreshold: 1, locationId: locations[4].id,
+      totalQty: 1, availableQty: 0, status: "PENDING_MAINTENANCE",
+      serialNumber: "SN-OSC-001", model: "Tektronix TBS1052B",
+      purchaseDate: new Date("2021-08-15"), purchasePrice: 35000,
+      maintenanceCycleMonths: 6,
+      lastMaintenanceDate: new Date("2025-11-15"),
+      nextMaintenanceDate: new Date("2026-05-15"),
+    },
+  });
+
+  await prisma.item.create({
+    data: {
+      code: "CON-006", name: "Expired Reagent", nameTh: "รีเอเจนต์หมดอายุ",
+      categoryId: catConsumable.id, issueUnit: "ขวด", subUnit: "ขวด",
+      conversionFactor: 1, minThreshold: 0, locationId: locations[5].id,
+      totalQty: 5, availableQty: 0, status: "DISPOSED",
+    },
+  });
+
   // Lots for consumables
   const lotB01 = await prisma.lot.create({
     data: {
@@ -241,8 +324,164 @@ async function main() {
     ],
   });
 
+  // --- Low stock items ---
+  const itemGloves = await prisma.item.create({
+    data: {
+      code: "CON-007", name: "Latex Gloves", nameTh: "ถุงมือยาง",
+      categoryId: catConsumable.id, issueUnit: "คู่", subUnit: "คู่",
+      conversionFactor: 1, minThreshold: 50, locationId: locations[3].id,
+      totalQty: 8, availableQty: 8,
+    },
+  });
+  const itemAlcohol = await prisma.item.create({
+    data: {
+      code: "CON-008", name: "Alcohol 70%", nameTh: "แอลกอฮอล์ 70%",
+      categoryId: catConsumable.id, issueUnit: "ขวด", subUnit: "ขวด",
+      conversionFactor: 1, minThreshold: 10, locationId: locations[2].id,
+      totalQty: 3, availableQty: 3,
+    },
+  });
+
+  // --- Near-expiry lots (within 90 days) ---
+  await prisma.lot.create({
+    data: {
+      itemId: itemGloves.id, lotNumber: "LOT-G01", quantity: 8,
+      expiryDate: new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000), // 15 days
+      receivedDate: day(180),
+    },
+  });
+  await prisma.lot.create({
+    data: {
+      itemId: itemAlcohol.id, lotNumber: "LOT-A01", quantity: 3,
+      expiryDate: new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000), // 45 days
+      receivedDate: day(120),
+    },
+  });
+  await prisma.lot.create({
+    data: {
+      itemId: itemFilterPaper.id, lotNumber: "LOT-F01", quantity: 30,
+      expiryDate: new Date(now.getTime() + 75 * 24 * 60 * 60 * 1000), // 75 days
+      receivedDate: day(90),
+    },
+  });
+
+  // --- Maintenance Records ---
+  await prisma.maintenanceRecord.createMany({
+    data: [
+      {
+        itemId: itemCentrifuge.id, type: "PREVENTIVE", result: "AVAILABLE",
+        performedAt: day(60), performedBy: admin.id,
+        description: "Annual preventive maintenance — cleaned and calibrated",
+        cost: 2500,
+        nextMaintenanceAt: new Date("2026-06-01"),
+      },
+      {
+        itemId: itemProjector.id, type: "PREVENTIVE", result: "AVAILABLE",
+        performedAt: day(90), performedBy: staff.id,
+        description: "Lamp replacement and lens cleaning",
+        cost: 4500,
+      },
+      {
+        itemId: itemUnderRepair.id, type: "CORRECTIVE", result: "NEEDS_MORE_REPAIR",
+        performedAt: day(20), performedBy: admin.id,
+        issue: "Power supply failure", description: "Replaced PSU, still unstable",
+        cost: 8000,
+      },
+      {
+        itemId: itemUnderRepair.id, type: "CORRECTIVE", result: "NEEDS_MORE_REPAIR",
+        performedAt: day(5), performedBy: admin.id,
+        issue: "Calibration drift", description: "Recalibrated, testing in progress",
+        cost: 3500,
+      },
+      {
+        itemId: itemCentrifuge.id, type: "PREVENTIVE", result: "AVAILABLE",
+        performedAt: new Date("2025-01-15"), performedBy: admin.id,
+        description: "Mid-year checkup",
+        cost: 1500,
+      },
+      {
+        itemId: itemProjector.id, type: "CORRECTIVE", result: "AVAILABLE",
+        performedAt: new Date("2025-08-10"), performedBy: staff.id,
+        issue: "Overheating", description: "Cleaned fan, replaced thermal paste",
+        cost: 1200,
+      },
+    ],
+  });
+
+  // --- Status Change Logs ---
+  await prisma.itemStatusLog.createMany({
+    data: [
+      { itemId: itemUnderRepair.id, previousStatus: "AVAILABLE", newStatus: "UNDER_REPAIR", reason: "Power supply failure", changedBy: admin.id, changedAt: day(22) },
+      { itemId: itemUnderRepair.id, previousStatus: "UNDER_REPAIR", newStatus: "UNDER_REPAIR", reason: "Still needs repair after first attempt", changedBy: admin.id, changedAt: day(20) },
+    ],
+  });
+
+  // --- More receives for annual cost report ---
+  await prisma.receiveRecord.createMany({
+    data: [
+      { itemId: itemGloves.id, quantity: 100, receivedBy: staff.id, receivedAt: day(100), notes: "Bulk order" },
+      { itemId: itemAlcohol.id, quantity: 50, receivedBy: staff.id, receivedAt: day(80) },
+    ],
+  });
+
+  // --- 2026 Purchases (for Annual Cost report) ---
+  const itemBalance = await prisma.item.create({
+    data: {
+      code: "FIX-005", name: "Analytical Balance", nameTh: "เครื่องชั่งวิเคราะห์",
+      categoryId: catFixedAsset.id, trackIndividually: true,
+      issueUnit: "เครื่อง", subUnit: "เครื่อง",
+      conversionFactor: 1, minThreshold: 1, locationId: locations[6].id,
+      totalQty: 1, availableQty: 1,
+      serialNumber: "SN-BA-001", model: "Mettler Toledo ME204",
+      purchaseDate: new Date("2026-02-10"), purchasePrice: 65000,
+      vendor: "Science Instruments Co.", warrantyEndDate: new Date("2029-02-10"),
+      maintenanceCycleMonths: 12,
+    },
+  });
+  await prisma.subItem.create({
+    data: { itemId: itemBalance.id, subCode: "FIX-005-001", status: "AVAILABLE", condition: "ดี" },
+  });
+
+  const itemPhMeter = await prisma.item.create({
+    data: {
+      code: "FIX-006", name: "pH Meter", nameTh: "เครื่องวัด pH",
+      categoryId: catFixedAsset.id, trackIndividually: true,
+      issueUnit: "เครื่อง", subUnit: "เครื่อง",
+      conversionFactor: 1, minThreshold: 1, locationId: locations[7].id,
+      totalQty: 2, availableQty: 2,
+      serialNumber: "SN-PH-001", model: "Hanna HI5222",
+      purchaseDate: new Date("2026-03-05"), purchasePrice: 28000,
+      vendor: "Lab Supply Co.", warrantyEndDate: new Date("2029-03-05"),
+      maintenanceCycleMonths: 6,
+    },
+  });
+  for (let i = 1; i <= 2; i++) {
+    await prisma.subItem.create({
+      data: { itemId: itemPhMeter.id, subCode: `FIX-006-${String(i).padStart(3, "0")}`, status: "AVAILABLE", condition: "ดี" },
+    });
+  }
+
+  const itemHotplate = await prisma.item.create({
+    data: {
+      code: "FIX-007", name: "Hot Plate Stirrer", nameTh: "เตาไฟฟ้าผสมแม่เหล็ก",
+      categoryId: catFixedAsset.id, trackIndividually: true,
+      issueUnit: "เครื่อง", subUnit: "เครื่อง",
+      conversionFactor: 1, minThreshold: 1, locationId: locations[0].id,
+      totalQty: 3, availableQty: 3,
+      serialNumber: "SN-HP-001", model: "IKA C-Mag HS7",
+      purchaseDate: new Date("2026-04-20"), purchasePrice: 18500,
+      vendor: "Thai Tech Co.", warrantyEndDate: new Date("2028-04-20"),
+      maintenanceCycleMonths: 12,
+    },
+  });
+  for (let i = 1; i <= 3; i++) {
+    await prisma.subItem.create({
+      data: { itemId: itemHotplate.id, subCode: `FIX-007-${String(i).padStart(3, "0")}`, status: "AVAILABLE", condition: "ดี" },
+    });
+  }
+
   console.log("Seed completed!");
-  console.log({ users: 3, categories: 4, subjects: 3, locations: 8, items: 9, subItems: 10, lots: 3, receives: 6, dispenses: 10 });
+  console.log({ users: 3, categories: 4, subjects: 3, locations: 8, items: 20, subItems: 24, lots: 6, receives: 8, dispenses: 10, maintenanceRecords: 6, statusLogs: 2 });
 
   await prisma.$disconnect();
 }
