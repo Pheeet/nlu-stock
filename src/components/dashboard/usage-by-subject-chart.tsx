@@ -4,6 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { useMemo } from "react";
+
+function resolveToHex(cssVar: string): string {
+  if (typeof window === "undefined") return "#888";
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+  if (!raw) return "#888";
+  if (raw.startsWith("#")) return raw;
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return "#888";
+  ctx.fillStyle = raw;
+  return ctx.fillStyle;
+}
 
 interface UsageBySubjectData {
   subjectCode: string;
@@ -16,6 +28,8 @@ interface UsageBySubjectChartProps {
 }
 
 export function UsageBySubjectChart({ data }: UsageBySubjectChartProps) {
+  const fillColor = useMemo(() => resolveToHex("--chart-2"), []);
+
   const chartData = data.map((d) => ({
     name: d.subjectName.length > 15 ? d.subjectName.slice(0, 13) + "…" : d.subjectName,
     totalQuantity: d.totalQuantity,
@@ -24,7 +38,7 @@ export function UsageBySubjectChart({ data }: UsageBySubjectChartProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="text-base font-semibold text-foreground">
           Usage by Subject This Month
         </CardTitle>
       </CardHeader>
@@ -37,7 +51,7 @@ export function UsageBySubjectChart({ data }: UsageBySubjectChartProps) {
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="totalQuantity" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="totalQuantity" fill={fillColor} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}

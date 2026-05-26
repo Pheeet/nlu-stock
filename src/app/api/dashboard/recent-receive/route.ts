@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   if (auth.denied) return auth.denied;
 
   const records = await prisma.receiveRecord.findMany({
-    take: 5,
+    take: 50,
     orderBy: { receivedAt: "desc" },
     include: {
       item: { select: { id: true, code: true, name: true } },

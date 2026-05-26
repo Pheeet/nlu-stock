@@ -84,11 +84,6 @@ export function DashboardCharts() {
         <RecentDispenseTable data={dispenseData} />
         <RecentReceiveTable data={receiveData} />
       </div>
-
-      <div className="grid gap-4 md:grid-cols-2 mt-6">
-        <TopDispenseChart data={topDispense} />
-        <UsageBySubjectChart data={usageBySubject} />
-      </div>
     </>
   );
 }

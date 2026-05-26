@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Pagination } from "./pagination";
 
 interface RecentReceiveRecord {
   id: string;
@@ -19,13 +21,18 @@ interface RecentReceiveTableProps {
   data: RecentReceiveRecord[];
 }
 
+const PAGE_SIZE = 5;
+
 export function RecentReceiveTable({ data }: RecentReceiveTableProps) {
   const router = useRouter();
+  const [page, setPage] = useState(1);
+
+  const sliced = data.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="text-base font-semibold text-foreground">
           Recent Receive
         </CardTitle>
       </CardHeader>
@@ -44,25 +51,26 @@ export function RecentReceiveTable({ data }: RecentReceiveTableProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((r) => (
+                {sliced.map((r) => (
                   <TableRow
                     key={r.id}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => router.push(`/items/${r.item.id}`)}
                   >
-                    <TableCell className="text-sm whitespace-nowrap">
+                    <TableCell className="text-sm whitespace-nowrap text-muted-foreground font-light">
                       {format(new Date(r.receivedAt), "dd MMM HH:mm")}
                     </TableCell>
                     <TableCell className="text-sm">
-                      <span className="font-mono">{r.item.code}</span>{" "}
-                      <span className="hidden sm:inline">{r.item.name}</span>
+                      <span className="font-mono text-foreground font-semibold underline decoration-primary/30 underline-offset-2">{r.item.code}</span>{" "}
+                      <span className="hidden sm:inline text-foreground/80 font-medium">{r.item.name}</span>
                     </TableCell>
-                    <TableCell className="text-right text-sm">{r.quantity}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-sm">{r.receiver.name}</TableCell>
+                    <TableCell className="text-right text-sm text-foreground font-bold">{r.quantity}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-sm text-foreground/80 font-medium">{r.receiver.name}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+            <Pagination page={page} total={data.length} pageSize={PAGE_SIZE} onChange={setPage} />
           </div>
         )}
       </CardContent>

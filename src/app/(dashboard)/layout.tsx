@@ -53,8 +53,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       <div className="flex flex-1 flex-col min-w-0">
-        <Header title={getTitle(pathname)} />
-        <main className="flex-1 overflow-auto p-4 pb-20 md:pb-4">
+        <Header title={getTitle(pathname)} user={user} />
+        <main className="flex-1 overflow-auto p-6 pb-20 md:pb-6">
           {children}
         </main>
       </div>

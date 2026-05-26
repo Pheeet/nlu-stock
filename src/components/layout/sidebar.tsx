@@ -9,8 +9,8 @@ import {
   Truck,
   BarChart3,
   Settings,
-  LogOut,
   ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/types";
@@ -42,23 +42,19 @@ export function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
     (item) => !item.adminOnly || user.role === "ADMIN"
   );
 
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/login";
-  }
-
   return (
     <aside
       className={cn(
         "hidden md:flex flex-col border-r bg-sidebar text-sidebar-foreground transition-all duration-200",
-        collapsed ? "w-16" : "w-56"
+        collapsed ? "w-16" : "w-60"
       )}
     >
-      <div className="flex items-center justify-between border-b px-3 h-14">
-        {!collapsed && <span className="font-semibold text-base">NLU Stock</span>}
+      {/* Logo / Toggle */}
+      <div className={cn("flex items-center h-16", collapsed ? "justify-center" : "justify-between px-4")}>
+        {!collapsed && <span className="font-bold text-lg tracking-tight">NLU Stock</span>}
         <button
           onClick={onToggle}
-          className="p-1.5 rounded-md hover:bg-sidebar-accent"
+          className="p-1.5 rounded-md hover:bg-sidebar-accent text-muted-foreground"
         >
           <ChevronLeft
             className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")}
@@ -66,47 +62,47 @@ export function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 p-2">
+      {/* Nav */}
+      <nav className={cn("flex-1 space-y-1.5 mt-2", collapsed ? "px-2" : "px-3")}>
         {filteredNav.map((item) => {
           const Icon = item.icon;
+          const active = isActive(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
+              title={collapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                isActive(item.href)
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50"
+                "flex items-center rounded-xl text-sm transition-colors",
+                collapsed ? "justify-center p-2" : "gap-3 px-3 py-2.5",
+                active
+                  ? "bg-orange-500 text-white font-medium"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent"
               )}
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              <span
+                className={cn(
+                  "flex items-center justify-center shrink-0",
+                  collapsed ? "h-8 w-8" : "h-8 w-8",
+                  "rounded-lg",
+                  active
+                    ? "bg-white/20"
+                    : "bg-orange-100 dark:bg-orange-900/30"
+                )}
+              >
+                <Icon className={cn("h-4 w-4", active ? "text-white" : "text-orange-500 dark:text-orange-400")} />
+              </span>
+              {!collapsed && (
+                <>
+                  <span className="flex-1">{item.label}</span>
+                  <ChevronRight className={cn("h-3.5 w-3.5", active ? "text-white/70" : "text-muted-foreground/40")} />
+                </>
+              )}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t p-3">
-        <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary shrink-0">
-            {user.name.charAt(0).toUpperCase()}
-          </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.name}</p>
-              <p className="text-xs text-muted-foreground">{user.role}</p>
-            </div>
-          )}
-          <button
-            onClick={handleLogout}
-            className="p-1.5 rounded-md hover:bg-sidebar-accent text-sidebar-foreground/50"
-            title="Logout"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
     </aside>
   );
 }
