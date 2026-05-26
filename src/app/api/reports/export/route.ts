@@ -77,6 +77,7 @@ async function fetchReportData(type: ReportType, params: URLSearchParams) {
           subject: { select: { name: true } },
         },
         orderBy: { dispensedAt: "desc" },
+        take: 10000,
       });
 
       return records.map((r) => ({
@@ -134,6 +135,7 @@ async function fetchReportData(type: ReportType, params: URLSearchParams) {
       const lowStock = await prisma.item.findMany({
         where: { ...itemWhere, availableQty: { lt: prisma.item.fields.minThreshold } },
         include: { category: { select: { name: true } } },
+        take: 10000,
       });
 
       const now = new Date();
@@ -145,6 +147,7 @@ async function fetchReportData(type: ReportType, params: URLSearchParams) {
           item: { isActive: true, ...(categoryId ? { categoryId } : {}) },
         },
         include: { item: { select: { code: true, name: true } } },
+        take: 10000,
       });
 
       const lowRows = lowStock.map((i) => ({
@@ -185,6 +188,7 @@ async function fetchReportData(type: ReportType, params: URLSearchParams) {
       const purchases = await prisma.item.findMany({
         where: itemWhere,
         select: { code: true, name: true, purchasePrice: true, purchaseDate: true, category: { select: { name: true } } },
+        take: 10000,
       });
 
       const maintWhere: Record<string, unknown> = {
@@ -196,6 +200,7 @@ async function fetchReportData(type: ReportType, params: URLSearchParams) {
       const repairs = await prisma.maintenanceRecord.findMany({
         where: maintWhere,
         include: { item: { select: { code: true, name: true } }, performer: { select: { name: true } } },
+        take: 10000,
       });
 
       const purchaseRows = purchases.map((p) => ({
@@ -231,6 +236,7 @@ async function fetchReportData(type: ReportType, params: URLSearchParams) {
           category: { select: { name: true } },
           location: { select: { room: true, cabinet: true, shelf: true } },
         },
+        take: 10000,
       });
 
       return items.map((i) => ({
@@ -249,10 +255,10 @@ async function fetchReportData(type: ReportType, params: URLSearchParams) {
 
       const where: Record<string, unknown> = { isActive: true, nextMaintenanceDate: { not: null } };
       if (dateFrom || dateTo) {
-        where.nextMaintenanceDate = {
-          ...(dateFrom && { gte: new Date(dateFrom) }),
-          ...(dateTo && { lte: new Date(dateTo + "T23:59:59") }),
-        };
+        const dateFilter: Record<string, unknown> = { not: null };
+        if (dateFrom) dateFilter.gte = new Date(dateFrom);
+        if (dateTo) dateFilter.lte = new Date(dateTo + "T23:59:59");
+        where.nextMaintenanceDate = dateFilter;
       }
       if (locationId) where.locationId = locationId;
 
@@ -263,6 +269,7 @@ async function fetchReportData(type: ReportType, params: URLSearchParams) {
           location: { select: { room: true, cabinet: true, shelf: true } },
         },
         orderBy: { nextMaintenanceDate: "asc" },
+        take: 10000,
       });
 
       return items.map((i) => ({
@@ -298,6 +305,7 @@ async function fetchReportData(type: ReportType, params: URLSearchParams) {
           performer: { select: { name: true } },
         },
         orderBy: { performedAt: "desc" },
+        take: 10000,
       });
 
       return records.map((r) => ({
