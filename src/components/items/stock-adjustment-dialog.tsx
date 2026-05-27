@@ -25,26 +25,30 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   itemId: string;
-  currentQty: number;
+  availableQty: number;
+  totalQty: number;
   onSuccess: () => void;
 }
 
-export function StockAdjustmentDialog({ open, onOpenChange, itemId, currentQty, onSuccess }: Props) {
-  const [newQty, setNewQty] = useState("");
+export function StockAdjustmentDialog({ open, onOpenChange, itemId, availableQty, totalQty, onSuccess }: Props) {
+  const [shelfCount, setShelfCount] = useState("");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const diff = newQty !== "" ? parseInt(newQty) - currentQty : 0;
+  const checkedOut = totalQty - availableQty;
+  const parsedShelf = shelfCount !== "" ? parseInt(shelfCount) : null;
+  const newAvailable = parsedShelf ?? 0;
+  const newTotal = parsedShelf !== null ? parsedShelf + checkedOut : null;
 
   async function handleSave() {
-    if (newQty === "" || !reason) return;
+    if (parsedShelf === null || !reason) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/items/${itemId}/adjust`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newQty: parseInt(newQty), reason, notes: notes || null }),
+        body: JSON.stringify({ shelfCount: parsedShelf, reason, notes: notes || null }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -53,7 +57,7 @@ export function StockAdjustmentDialog({ open, onOpenChange, itemId, currentQty, 
       }
       toast.success("Stock adjusted");
       onOpenChange(false);
-      setNewQty("");
+      setShelfCount("");
       setReason("");
       setNotes("");
       onSuccess();
@@ -70,22 +74,29 @@ export function StockAdjustmentDialog({ open, onOpenChange, itemId, currentQty, 
           <DialogTitle>Adjust Stock</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div>
-            <Label>Current Quantity</Label>
-            <Input value={currentQty} disabled />
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="text-muted-foreground">Total (system)</span>
+              <p className="font-medium">{totalQty}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Currently checked out</span>
+              <p className="font-medium">{checkedOut}</p>
+            </div>
           </div>
           <div>
-            <Label>New Quantity</Label>
+            <Label>Count on shelf *</Label>
             <Input
               type="number"
               min="0"
-              value={newQty}
-              onChange={(e) => setNewQty(e.target.value)}
-              placeholder="Enter new quantity"
+              value={shelfCount}
+              onChange={(e) => setShelfCount(e.target.value)}
+              placeholder="How many items did you count?"
             />
-            {newQty !== "" && (
-              <p className={`text-sm mt-1 ${diff > 0 ? "text-green-600" : diff < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                {diff > 0 ? `+${diff}` : diff} from current
+            {parsedShelf !== null && newTotal !== null && (
+              <p className={`text-sm mt-1 ${newTotal > totalQty ? "text-green-600" : newTotal < totalQty ? "text-destructive" : "text-muted-foreground"}`}>
+                New total: {newTotal} ({newTotal > totalQty ? `+${newTotal - totalQty}` : newTotal < totalQty ? `${newTotal - totalQty}` : "no change"})
+                {checkedOut > 0 && ` = ${parsedShelf} on shelf + ${checkedOut} checked out`}
               </p>
             )}
           </div>
@@ -107,7 +118,7 @@ export function StockAdjustmentDialog({ open, onOpenChange, itemId, currentQty, 
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving || newQty === "" || !reason}>
+          <Button onClick={handleSave} disabled={saving || parsedShelf === null || !reason}>
             {saving ? "Saving..." : "Adjust"}
           </Button>
         </DialogFooter>

@@ -33,7 +33,7 @@ export type ItemCreateInput = z.infer<typeof itemCreateSchema>;
 export type ItemUpdateInput = z.infer<typeof itemUpdateSchema>;
 
 export const stockAdjustSchema = z.object({
-  newQty: z.number().int().min(0, "Quantity cannot be negative"),
+  shelfCount: z.number().int().min(0, "Shelf count cannot be negative"),
   reason: z.nativeEnum(AdjustmentReason),
   notes: z.string().max(500).optional().nullable(),
   imageEvidence: z.string().url().optional().nullable(),

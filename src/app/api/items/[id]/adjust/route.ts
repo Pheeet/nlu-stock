@@ -17,13 +17,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const item = await tx.item.findUnique({ where: { id } });
     if (!item) throw new Error("NOT_FOUND");
 
-    if (data.newQty === item.availableQty) throw new Error("SAME_QTY");
+    const checkedOut = item.totalQty - item.availableQty;
+    const newAvailable = data.shelfCount;
+    const newTotal = data.shelfCount + checkedOut;
+
+    if (newAvailable === item.availableQty) throw new Error("SAME_QTY");
 
     const adjustment = await tx.stockAdjustment.create({
       data: {
         itemId: id,
         previousQty: item.availableQty,
-        newQty: data.newQty,
+        newQty: newAvailable,
         reason: data.reason,
         notes: data.notes,
         adjustedBy: auth.user.userId,
@@ -31,12 +35,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       },
     });
 
-    const diff = data.newQty - item.availableQty;
     await tx.item.update({
       where: { id },
       data: {
-        availableQty: data.newQty,
-        totalQty: item.totalQty + diff,
+        availableQty: newAvailable,
+        totalQty: newTotal,
       },
     });
 
@@ -45,7 +48,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         itemId: id,
         previousStatus: item.status,
         newStatus: item.status,
-        reason: `Stock adjusted: ${item.availableQty} → ${data.newQty} (${data.reason})`,
+        reason: `Stock adjusted: ${item.availableQty} → ${newAvailable} on shelf (${newTotal} total, ${checkedOut} checked out) (${data.reason})`,
         changedBy: auth.user.userId,
       },
     });
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   });
 
   if (result === null) return notFound("Item not found");
-  if (result === "SAME_QTY") return error("New quantity is the same as current");
+  if (result === "SAME_QTY") return error("Shelf count is the same as current available quantity");
 
   return json(result, 201);
 }

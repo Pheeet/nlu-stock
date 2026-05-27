@@ -84,11 +84,15 @@ export async function POST(req: NextRequest) {
             },
           });
         } else if (di.lotId) {
-          // Consumable with lot: deduct lot + item availableQty
-          await tx.lot.update({
-            where: { id: di.lotId },
+          // Consumable with lot: deduct lot + item availableQty (optimistic lock)
+          const updated = await tx.lot.updateMany({
+            where: { id: di.lotId, quantity: { gte: di.quantity } },
             data: { quantity: { decrement: di.quantity } },
           });
+          if (updated.count === 0) {
+            const lot = await tx.lot.findUnique({ where: { id: di.lotId } });
+            throw new Error(`Lot ${lot?.lotNumber ?? di.lotId} has only ${lot?.quantity ?? 0} ${item.issueUnit}, requested ${di.quantity}`);
+          }
           await tx.item.update({
             where: { id: di.itemId },
             data: { availableQty: { decrement: di.quantity } },

@@ -164,7 +164,8 @@ export default function ItemDetailPage() {
         open={adjustOpen}
         onOpenChange={setAdjustOpen}
         itemId={item.id}
-        currentQty={item.availableQty}
+        availableQty={item.availableQty}
+        totalQty={item.totalQty}
         onSuccess={fetchItem}
       />
 
