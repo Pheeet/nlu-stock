@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth, json, notFound, error, parseBody, forbidden } from "@/lib/api-utils";
 import { stockAdjustSchema } from "@/lib/validators";
+import { ItemStatus } from "@/generated/prisma/enums";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -17,7 +18,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const item = await tx.item.findUnique({ where: { id } });
     if (!item) throw new Error("NOT_FOUND");
 
-    const checkedOut = item.totalQty - item.availableQty;
+    // For tracked items: count CHECKED_OUT sub-items (dispense changes status, not qty)
+    // For non-tracked items: diff between total and available
+    const checkedOut = item.trackIndividually
+      ? await tx.subItem.count({ where: { itemId: id, status: ItemStatus.CHECKED_OUT } })
+      : item.totalQty - item.availableQty;
+
     const newAvailable = data.shelfCount;
     const newTotal = data.shelfCount + checkedOut;
 

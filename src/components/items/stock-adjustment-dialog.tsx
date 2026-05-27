@@ -27,28 +27,29 @@ interface Props {
   itemId: string;
   availableQty: number;
   totalQty: number;
+  checkedOutCount: number;
   onSuccess: () => void;
 }
 
-export function StockAdjustmentDialog({ open, onOpenChange, itemId, availableQty, totalQty, onSuccess }: Props) {
+export function StockAdjustmentDialog({ open, onOpenChange, itemId, availableQty, totalQty, checkedOutCount, onSuccess }: Props) {
   const [shelfCount, setShelfCount] = useState("");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const checkedOut = totalQty - availableQty;
   const parsedShelf = shelfCount !== "" ? parseInt(shelfCount) : null;
-  const newAvailable = parsedShelf ?? 0;
-  const newTotal = parsedShelf !== null ? parsedShelf + checkedOut : null;
+  const safeParsed = parsedShelf !== null && !isNaN(parsedShelf) ? parsedShelf : null;
+  const newAvailable = safeParsed ?? 0;
+  const newTotal = safeParsed !== null ? safeParsed + checkedOutCount : null;
 
   async function handleSave() {
-    if (parsedShelf === null || !reason) return;
+    if (safeParsed === null || !reason) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/items/${itemId}/adjust`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shelfCount: parsedShelf, reason, notes: notes || null }),
+        body: JSON.stringify({ shelfCount: safeParsed, reason, notes: notes || null }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -81,7 +82,7 @@ export function StockAdjustmentDialog({ open, onOpenChange, itemId, availableQty
             </div>
             <div>
               <span className="text-muted-foreground">Currently checked out</span>
-              <p className="font-medium">{checkedOut}</p>
+              <p className="font-medium">{checkedOutCount}</p>
             </div>
           </div>
           <div>
@@ -93,10 +94,10 @@ export function StockAdjustmentDialog({ open, onOpenChange, itemId, availableQty
               onChange={(e) => setShelfCount(e.target.value)}
               placeholder="How many items did you count?"
             />
-            {parsedShelf !== null && newTotal !== null && (
+            {safeParsed !== null && newTotal !== null && (
               <p className={`text-sm mt-1 ${newTotal > totalQty ? "text-green-600" : newTotal < totalQty ? "text-destructive" : "text-muted-foreground"}`}>
                 New total: {newTotal} ({newTotal > totalQty ? `+${newTotal - totalQty}` : newTotal < totalQty ? `${newTotal - totalQty}` : "no change"})
-                {checkedOut > 0 && ` = ${parsedShelf} on shelf + ${checkedOut} checked out`}
+                {checkedOutCount > 0 && ` = ${safeParsed} on shelf + ${checkedOutCount} checked out`}
               </p>
             )}
           </div>
@@ -118,7 +119,7 @@ export function StockAdjustmentDialog({ open, onOpenChange, itemId, availableQty
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving || parsedShelf === null || !reason}>
+          <Button onClick={handleSave} disabled={saving || safeParsed === null || !reason}>
             {saving ? "Saving..." : "Adjust"}
           </Button>
         </DialogFooter>

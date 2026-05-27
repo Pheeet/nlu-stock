@@ -166,6 +166,9 @@ export default function ItemDetailPage() {
         itemId={item.id}
         availableQty={item.availableQty}
         totalQty={item.totalQty}
+        checkedOutCount={item.trackIndividually
+          ? item.subItems.filter(s => s.status === "CHECKED_OUT").length
+          : item.totalQty - item.availableQty}
         onSuccess={fetchItem}
       />
 
